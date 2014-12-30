@@ -4,11 +4,12 @@
 * Copyright (c) 2015, Leon Sorokin
 * All rights reserved. (MIT Licensed)
 *
-* Route66.php - another PHP micro-router
+* Route66.php - PHP micro-router
 *
 */
 
 class Route66 {
+	static $base	= '';
 	static $routes	= [];
 	static $nomatch	= null;
 	static $rxalias	= [
@@ -21,6 +22,8 @@ class Route66 {
 
 	// add_route
 	public static function __callStatic($meth, $args) {
+		$args[0] = self::$base . $args[0];
+
 		if (strpos($args[0], '@') !== false) {
 			// param -> regex maps
 			$regs = isset($args[2]) && is_array($args[2]) ? $args[2] : [];
@@ -57,6 +60,11 @@ class Route66 {
 			self::$routes[$meth] = [];
 
 		self::$routes[$meth][$args[0]] = $args[1];
+	}
+
+	// set route prefix
+	public static function base($base) {
+		self::$base = $base;
 	}
 
 	// add_route (multi-method)
