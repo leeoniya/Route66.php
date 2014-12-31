@@ -5,7 +5,6 @@
 * All rights reserved. (MIT Licensed)
 *
 * Route66.php - PHP micro-router
-*
 */
 
 class Route66 {
@@ -63,6 +62,11 @@ class Route66 {
 	}
 
 	// set route prefix
+	public static function any($route, $callback, $regs = null) {
+		self::match('get|post|put|delete|head|options', $route, $callback, $regs);
+	}
+
+	// set route prefix
 	public static function base($base) {
 		self::$base = $base;
 	}
@@ -74,7 +78,7 @@ class Route66 {
 	}
 
 	// catchall
-	public static function nomatch($callback) {
+	public static function error($callback) {
 		self::$nomatch = $callback;
 	}
 
