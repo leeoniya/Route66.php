@@ -23,6 +23,8 @@ class Route66 {
 		':alnum'	=> '[0-9A-Za-z]+',
 	];
 
+	const NOHALT = 'DtMnL29y';
+
 	// add_route
 	public static function __callStatic($meths, $args) {
 		$args[0] = self::$base . $args[0];
@@ -96,6 +98,10 @@ class Route66 {
 		return hash('md5', $uri . ' ' . json_encode($params));
 	}
 
+	public static function rxalias($alias, $regex) {
+		self::$rxalias[$alias] = $regex;
+	}
+
 	public static function any($route, $callback, $regs = null) {
 		self::match('get|post|put|patch|delete|head|options', $route, $callback, $regs);
 	}
@@ -108,7 +114,7 @@ class Route66 {
 		self::__callStatic($meths, [$route, $callback, $regs]);
 	}
 
-	public static function error($callback) {
+	public static function nomatch($callback) {
 		self::$nomatch = $callback;
 	}
 
@@ -157,7 +163,7 @@ class Route66 {
 			$res = call_user_func_array($route[0], empty($params) ? $route[1] : $params);
 
 			// pass-thru now, maybe waterfall later
-			if ($res === true)
+			if ($res === self::NOHALT)
 				$from_route = $route[2];
 			else {
 				if (isset($res))

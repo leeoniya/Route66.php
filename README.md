@@ -83,7 +83,7 @@ R::get('/posts/@id',       function($id) {}, ['id' => ':alpha']);
 R::get('/posts/@id',       function($id) {}, ['id' => '\w{12}']);
 
 // define a custom alias
-R::$rxalias[':date'] = '[0-9]{4}-[0-9]{2}-[0-9]{2}';
+R::rxalias(':date', '[0-9]{4}-[0-9]{2}-[0-9]{2}');
 ```
 
 #### Optional segments & params
@@ -121,7 +121,7 @@ R::get('/login', function() {});	// maps to /admin/login
 // before all /admin* routes
 R::get('/admin(/:all)', function() {
 	// verify valid session, etc...
-	return true;		// fall through to addtional routes
+	return R::NOHALT;		// fall through to addtional routes
 });
 
 R::get('/admin/dashboard', function() {
@@ -132,7 +132,7 @@ R::get('/admin/dashboard', function() {
 #### Custom catch-all (no route found)
 
 ```php
-R::error(function($meth, $uri) {
+R::nomatch(function($meth, $uri) {
 	header($_SERVER["SERVER_PROTOCOL"] . " 404 Not Found");
 	exit('404 Not Found.');
 });
