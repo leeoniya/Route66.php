@@ -121,7 +121,7 @@ R::get('/login', function() {});	// maps to /admin/login
 // before all /admin* routes
 R::get('/admin(/:all)', function() {
 	// verify valid session, etc...
-	return R::NOHALT;		// fall through to addtional routes
+	return R::NOHALT;		// fall through to additional routes
 });
 
 R::get('/admin/dashboard', function() {
