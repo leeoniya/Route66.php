@@ -36,7 +36,7 @@ require 'Route66.php';
 ```json
 {
 	"require": {
-		"leeoniya/Route66": "dev-master"
+		"leeoniya/route66": "dev-master"
 	}
 }
 ```
