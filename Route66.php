@@ -96,27 +96,22 @@ class Route66 {
 		return hash('md5', $uri . ' ' . json_encode($params));
 	}
 
-	// set route prefix
 	public static function any($route, $callback, $regs = null) {
 		self::match('get|post|put|patch|delete|head|options', $route, $callback, $regs);
 	}
 
-	// set route prefix
 	public static function base($base) {
 		self::$base = $base;
 	}
 
-	// add_route (multi-method)
 	public static function match($meths, $route, $callback, $regs = null) {
 		self::__callStatic($meths, [$route, $callback, $regs]);
 	}
 
-	// catchall
 	public static function error($callback) {
 		self::$nomatch = $callback;
 	}
 
-	// match_route
 	protected static function find($meth, $uri, $from_route = null) {
 		$meth = strtoupper($meth);
 		// named route?
