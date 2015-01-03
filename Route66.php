@@ -10,60 +10,95 @@
 class Route66 {
 	static $base	= '';
 	static $routes	= [];
+	static $names	= [];
+	static $cache	= [];
 	static $nomatch	= null;
 	static $rxalias	= [
-		'num'	=> '[0-9]+',
-		'alpha'	=> '[A-Za-z]+',
-		'alnum'	=> '[0-9A-Za-z]+',
-		'word'	=> '\w+',
-		'slug'	=> '[\w-]+',
+		':all'		=> '.*',
+		':seg'		=> '[^/]+',
+		':slug'		=> '[a-z0-9-]+',
+		':slug2'	=> '[\w-]+',			// slug + underscores
+		':num'		=> '[0-9]+',
+		':alpha'	=> '[A-Za-z]+',
+		':alnum'	=> '[0-9A-Za-z]+',
 	];
 
 	// add_route
-	public static function __callStatic($meth, $args) {
+	public static function __callStatic($meths, $args) {
 		$args[0] = self::$base . $args[0];
 
-		if (strpos($args[0], '@') !== false) {
-			// param -> regex maps
-			$regs = isset($args[2]) && is_array($args[2]) ? $args[2] : [];
+		// detect var_regs vs route_name
+		$regs = null;
+		$name = null;
 
-			$args[0] = str_replace(['(',')'], ['(?:', ')?'], $args[0]);
-
-			$args[0] = preg_replace_callback('#@([a-z][0-9a-z_:]*)#i', function($match) use (&$regs) {
-				@list($var, $typ) = explode(':', $match[1]);
-
-				$rex = null;
-
-				if (isset($regs[$var])) {
-					if ($regs[$var]{0} == ':')
-						$typ = substr($regs[$var], 1);
-					else
-						$rex = $regs[$var];
-				}
-
-				if (!$rex && $typ) {
-					if (!isset(self::$rxalias[$typ]))
-						trigger_error("Unknown ':{$typ}' regex alias; '@{$var}' param will not be validated.");
-					else
-						$rex = self::$rxalias[$typ];
-				}
-
-				return $rex ? '(' . $rex . ')' : '([\w-~]+)';
-
-			}, $args[0]);
+		switch (count($args)) {
+			case 3:
+				$regs = is_array($args[2])  ? $args[2] : null;
+				$name = is_string($args[2]) ? $args[2] : null;
+				break;
+			case 4:
+				$regs = is_array($args[2])  ? $args[2] : $args[3];
+				$name = is_string($args[2]) ? $args[2] : $args[3];
+				break;
 		}
 
-		$meth = strtoupper($meth);
+		$hash = self::hash($args[0], json_encode($regs));
 
-		if (!isset(self::$routes[$meth]))
-			self::$routes[$meth] = [];
+		if ($name !== null)
+			self::$names[$name] = $hash;
 
-		self::$routes[$meth][$args[0]] = $args[1];
+		if (isset(self::$cache[$hash]))
+			$args[0] = self::$cache[$hash];
+		else {
+			// detect and process named params & add'l sugar (unescaped   @foo, @foo:bar, :bar)
+			$sweet = '#(?<!\\\\)@(\w+)(:\w+)?|(?<![\\?])(:\w+)#i';
+
+			if (preg_match($sweet, $args[0])) {
+				$args[0] = str_replace(['(',')'], ['(?:', ')?'], $args[0]);		// todo: ignore (?
+
+				$args[0] = preg_replace_callback($sweet, function($match) use ($regs) {
+					$var = $match[1];
+					$typ = isset($match[2]) && $match[2] !== '' ? $match[2] : ( isset($match[3]) ? $match[3] : ':seg' );
+
+					$rex = null;
+
+					if (isset($regs[$var])) {
+						if ($regs[$var]{0} == ':')
+							$typ = $regs[$var];
+						else
+							$rex = $regs[$var];
+					}
+
+					if (!$rex && $typ) {
+						if (!isset(self::$rxalias[$typ]))
+							trigger_error("Unknown ':{$typ}' regex alias; '@{$var}' param will not be validated.");
+						else
+							$rex = self::$rxalias[$typ];
+					}
+
+					return '(' . $rex . ')';
+
+				}, $args[0]);
+			}
+
+			self::$cache[$hash] = $args[0];
+		}
+
+		foreach (explode('|', strtoupper($meths)) as $meth) {
+			if (!isset(self::$routes[$meth]))
+				self::$routes[$meth] = [];
+
+			self::$routes[$meth][$args[0]] = $args[1];
+		}
+	}
+
+	protected static function hash($uri, $params) {
+		return hash('md5', $uri . ' ' . json_encode($params));
 	}
 
 	// set route prefix
 	public static function any($route, $callback, $regs = null) {
-		self::match('get|post|put|delete|head|options', $route, $callback, $regs);
+		self::match('get|post|put|patch|delete|head|options', $route, $callback, $regs);
 	}
 
 	// set route prefix
@@ -73,8 +108,7 @@ class Route66 {
 
 	// add_route (multi-method)
 	public static function match($meths, $route, $callback, $regs = null) {
-		foreach (explode('|', $meths) as $meth)
-			self::$meth($route, $callback, $regs);
+		self::__callStatic($meths, [$route, $callback, $regs]);
 	}
 
 	// catchall
@@ -83,11 +117,18 @@ class Route66 {
 	}
 
 	// match_route
-	protected static function find(&$type, $meth, $uri, $from_route = null) {
-		if (!isset($type[$meth]))
+	protected static function find($meth, $uri, $from_route = null) {
+		$meth = strtoupper($meth);
+		// named route?
+		if (strpos($uri, '/') === false) {
+			if ($hash = @self::$names[$uri])
+				$uri = self::$cache[$hash];
+		}
+
+		if (!isset(self::$routes[$meth]))
 			return false;
 
-		$rset = $type[$meth];
+		$rset = self::$routes[$meth];
 
 		$do_try = $from_route === null;
 
@@ -96,8 +137,10 @@ class Route66 {
 
 		foreach ($rset as $route => $func) {
 			if ($do_try) {
-				if (preg_match('#^' . $route . '$#', $uri, $matches))
-					return [$func, array_slice($matches, 1), $route];
+				if (preg_match('#^' . $route . '$#', $uri, $params)) {
+					array_shift($params);
+					return [$func, $params, $route];
+				}
 			}
 			else if ($route === $from_route)
 				$do_try = true;
@@ -106,17 +149,17 @@ class Route66 {
 		return false;
 	}
 
-	public static function dispatch($meth = null, $uri = null) {
+	public static function dispatch($meth = null, $uri = null, $params = []) {
 		$meth = $meth === null ? $_SERVER['REQUEST_METHOD'] : $meth;
 		$uri = $uri === null ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : $uri;
 
 		$found = false;
 		$from_route = null;
 
-		while ($route = self::find(self::$routes, $meth, $uri, $from_route)) {
+		while ($route = self::find($meth, $uri, $from_route)) {
 			$found = true;
 
-			$res = call_user_func_array($route[0], $route[1]);
+			$res = call_user_func_array($route[0], empty($params) ? $route[1] : $params);
 
 			// pass-thru now, maybe waterfall later
 			if ($res === true)
@@ -153,5 +196,14 @@ class Route66 {
 	public static function redirect($loc, $code = 301) {
 		header("Location: $loc", true, $code);
 		exit();
+	}
+
+	public static function export() {
+		return [self::$cache, self::$names];
+	}
+
+	public static function import(Array $cfg) {
+		self::$cache = $cfg[0];
+		self::$names = $cfg[1];
 	}
 }

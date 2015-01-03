@@ -1,0 +1,22 @@
+{
+    "name": "leeoniya/Route66",
+    "description": "PHP micro-router",
+    "keywords": ["route", "router", "routing", "sinatra"],
+    "type": "library",
+    "homepage": "https://github.com/leeoniya/Route66.php",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Leon Sorokin",
+            "email": "leeoniya@gmail.com",
+            "homepage": "https://github.com/leeoniya",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "autoload": {
+        "files": ["Route66.php"]
+    }
+}
