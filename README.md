@@ -138,7 +138,7 @@ R::nomatch(function($meth, $uri) {
 });
 ```
 
-#### Dispatch w/custom URI
+#### Custom dispatch (e.g. internal redirects)
 
 ```php
 R::dispatch('get', '/blog');
