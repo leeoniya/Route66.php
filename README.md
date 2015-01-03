@@ -184,7 +184,7 @@ R::is_https();
 R::redirect($location, $code = 301);
 ```
 
-#### Features added to Macaw <a id="added-feats"></a>
+#### New features (relative to Macaw) <a id="added-feats"></a>
 
 - Named params (e.g. `@user:alpha`)
 - Optional route segments and params, param defaults
