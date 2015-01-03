@@ -1,5 +1,5 @@
 {
-    "name": "leeoniya/Route66",
+    "name": "leeoniya/route66",
     "description": "PHP micro-router",
     "keywords": ["route", "router", "routing", "sinatra"],
     "type": "library",
