@@ -83,7 +83,7 @@ R::get('/posts/@id',       function($id) {}, ['id' => ':alpha']);
 R::get('/posts/@id',       function($id) {}, ['id' => '\w{12}']);
 
 // define a custom alias
-R::rxalias(':date', '[0-9]{4}-[0-9]{2}-[0-9]{2}');
+R::alias(':date', '[0-9]{4}-[0-9]{2}-[0-9]{2}');
 ```
 
 #### Optional segments & params

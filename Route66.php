@@ -98,7 +98,7 @@ class Route66 {
 		return hash('md5', $uri . ' ' . json_encode($params));
 	}
 
-	public static function rxalias($alias, $regex) {
+	public static function alias($alias, $regex) {
 		self::$rxalias[$alias] = $regex;
 	}
 
