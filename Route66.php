@@ -9,6 +9,8 @@
 
 class Route66 {
 	static $base	= '';
+	static $before	= null;
+	static $after	= null;
 	static $routes	= [];
 	static $names	= [];
 	static $cache	= [];
@@ -90,7 +92,7 @@ class Route66 {
 			if (!isset(self::$routes[$meth]))
 				self::$routes[$meth] = [];
 
-			self::$routes[$meth][$args[0]] = $args[1];
+			self::$routes[$meth][$args[0]] = [$args[1], self::$before, self::$after];
 		}
 	}
 
@@ -106,8 +108,10 @@ class Route66 {
 		self::match('get|post|put|patch|delete|head|options', $route, $callback, $regs);
 	}
 
-	public static function base($base) {
-		self::$base = $base;
+	public static function base($base, $before = null, $after = null) {
+		self::$base		= $base;
+		self::$before	= $before;
+		self::$after	= $after;
 	}
 
 	public static function match($meths, $route, $callback, $regs = null) {
@@ -133,14 +137,14 @@ class Route66 {
 
 		$do_try = $from_route === null;
 
-		if ($do_try && isset($rset[$uri]))
+		if ($do_try && isset($rset[$uri]))		// this optimization prevents pre-routes from working
 			return [$rset[$uri], [], $uri];
 
-		foreach ($rset as $route => $func) {
+		foreach ($rset as $route => $funcs) {
 			if ($do_try) {
 				if (preg_match('#^' . $route . '$#', $uri, $params)) {
 					array_shift($params);
-					return [$func, $params, $route];
+					return [$funcs, $params, $route];
 				}
 			}
 			else if ($route === $from_route)
@@ -158,14 +162,25 @@ class Route66 {
 		$from_route = null;
 
 		while ($route = self::find($meth, $uri, $from_route)) {
-			$found = true;
+			// before; todo: should receive request?
+			if (isset($route[0][1])) {
+				$bres = call_user_func($route[0][1]);
+				if ($bres !== self::NOHALT)
+					return;
+			}
 
-			$res = call_user_func_array($route[0], empty($params) ? $route[1] : $params);
+			$res = call_user_func_array($route[0][0], empty($params) ? $route[1] : $params);
 
 			// pass-thru now, maybe waterfall later
 			if ($res === self::NOHALT)
 				$from_route = $route[2];
 			else {
+				$found = true;
+
+				// after; todo: should receive response?
+				if (isset($route[0][2]))
+					call_user_func($route[0][2]);
+
 				if (isset($res))
 					echo $res;
 
@@ -197,6 +212,33 @@ class Route66 {
 	public static function redirect($loc, $code = 301) {
 		header("Location: $loc", true, $code);
 		exit();
+	}
+
+	public static function json($data) {
+		header('Content-Type: application/json');
+		echo json_encode($data);
+		exit();
+	}
+
+	public static function json_reqd() {
+		return strpos(getallheaders()['Accept'], 'application/json') !== false;
+	}
+
+	public static function deny($msg = null, $code = 401, $auth = 'Basic', $realm = null) {
+		if ($realm === null)
+			$realm = $_SERVER['HTTP_HOST'];
+
+		$HTTP = $_SERVER["SERVER_PROTOCOL"];
+
+		if ($code == 401) {
+			header("WWW-Authenticate: {$auth} realm=\"{$realm}\"", true);
+			header("{$HTTP} 401 Unauthorized", true, $code);
+			echo $msg === null ? 'Access denied: Not logged in' : $msg;
+		}
+		else if ($code == 403) {
+			header("{$HTTP} 403 Forbidden", true, $code);
+			echo $msg === null ? 'Access denied: Resource resricted' : $msg;
+		}
 	}
 
 	public static function export() {

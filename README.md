@@ -33,6 +33,8 @@ server {
 require 'Route66.php';
 ```
 
+https://packagist.org/packages/leeoniya/route66
+
 ```json
 {
 	"require": {
