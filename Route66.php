@@ -11,6 +11,7 @@ class Route66 {
 	static $base	= '';
 	static $before	= null;
 	static $after	= null;
+	static $mounter	= null;
 	static $routes	= [];
 	static $names	= [];
 	static $cache	= [];
@@ -108,6 +109,11 @@ class Route66 {
 		self::match('get|post|put|patch|delete|head|options', $route, $callback, $regs);
 	}
 
+	// dynamic route loader
+	public static function mount(callable $mounter) {
+		self::$mounter = $mounter;
+	}
+
 	public static function base($base, $before = null, $after = null) {
 		self::$base		= $base;
 		self::$before	= $before;
@@ -157,6 +163,9 @@ class Route66 {
 	public static function dispatch($meth = null, $uri = null, $params = []) {
 		$meth = $meth === null ? $_SERVER['REQUEST_METHOD'] : $meth;
 		$uri = $uri === null ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : $uri;
+
+		if ($fn = self::$mounter)
+			$fn($uri);
 
 		$found = false;
 		$from_route = null;
@@ -214,11 +223,17 @@ class Route66 {
 		exit();
 	}
 
+	public static function invalid($msg = '400 Bad Request.') {
+		header($_SERVER["SERVER_PROTOCOL"] . " 400 Bad Request");
+		exit($msg);
+	}
+
 	public static function json($data) {
 		header('Content-Type: application/json');
-		echo json_encode($data);
-		exit();
+		return json_encode($data);
 	}
+
+	// is_json, try to decode raw post body?
 
 	public static function json_reqd() {
 		return strpos(getallheaders()['Accept'], 'application/json') !== false;
@@ -237,7 +252,7 @@ class Route66 {
 		}
 		else if ($code == 403) {
 			header("{$HTTP} 403 Forbidden", true, $code);
-			echo $msg === null ? 'Access denied: Resource resricted' : $msg;
+			echo $msg === null ? 'Access denied: Resource restricted' : $msg;
 		}
 	}
 
