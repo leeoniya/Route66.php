@@ -68,7 +68,7 @@ class Route66 {
 					$rex = null;
 
 					if (isset($regs[$var])) {
-						if ($regs[$var]{0} == ':')
+						if ($regs[$var][0] == ':')
 							$typ = $regs[$var];
 						else
 							$rex = $regs[$var];
